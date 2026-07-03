@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>2048 — Slide & Merge Puzzle | Free Browser Game</title>
+    <meta name="description" content="Play 2048 free in your browser! Slide tiles, merge numbers, and reach the 2048 tile. Addictive puzzle game — no download needed.">
+    <meta name="keywords" content="2048, puzzle game, browser game, number game, free game, web game, merge tiles, html5 game">
+    <meta name="author" content="Pini Solomon">
+    <meta name="theme-color" content="#faf8ef">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pinisolomon.github.io/2048-game/">
+    <meta property="og:title" content="2048 — Slide & Merge Puzzle | Free Browser Game">
+    <meta property="og:description" content="Slide tiles, merge numbers, reach 2048! Free addictive puzzle game in your browser.">
+    <meta property="og:image" content="https://pinisolomon.github.io/2048-game/og-image.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="2048 — Slide & Merge Puzzle">
+    <meta name="twitter:description" content="Slide tiles, merge numbers, reach 2048! Free in your browser.">
+    <meta name="twitter:image" content="https://pinisolomon.github.io/2048-game/og-image.png">
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "2048",
+        "description": "A sliding tile puzzle game where you merge numbers to reach 2048.",
+        "url": "https://pinisolomon.github.io/2048-game/",
+        "genre": ["Puzzle"],
+        "gamePlatform": ["Web Browser"],
+        "applicationCategory": "Game",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "playMode": "SinglePlayer"
+    }
+    </script>
+
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-T4GGYBE7K5"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-T4GGYBE7K5');
+        function trackEvent(eventName, params) {
+            if (typeof gtag === 'function') gtag('event', eventName, params);
+        }
+    </script>
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <header>
+            <div class="title-row">
+                <h1>2048</h1>
+                <div class="scores">
+                    <div class="score-box">
+                        <div class="score-label">SCORE</div>
+                        <div id="score">0</div>
+                    </div>
+                    <div class="score-box">
+                        <div class="score-label">BEST</div>
+                        <div id="best">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="controls-row">
+                <p class="tagline">Join the numbers and get to the <strong>2048 tile!</strong></p>
+                <button id="new-game-btn">New Game</button>
+            </div>
+        </header>
+
+        <div id="game-board">
+            <div id="grid-bg"></div>
+            <div id="tiles"></div>
+        </div>
+
+        <div id="game-message" class="hidden">
+            <p id="message-text"></p>
+            <button id="message-btn">Try again</button>
+        </div>
+
+        <footer>
+            <p><strong>HOW TO PLAY:</strong> Use <strong>arrow keys</strong> or <strong>swipe</strong> to move tiles. When two tiles with the same number touch, they <strong>merge into one!</strong></p>
+        </footer>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

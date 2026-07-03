@@ -1,0 +1,12 @@
+{
+  "name": "2048-game",
+  "version": "1.0.0",
+  "description": "2048 slide and merge puzzle game",
+  "main": "game.js",
+  "scripts": {
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}
