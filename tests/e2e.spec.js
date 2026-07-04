@@ -397,3 +397,115 @@ test('score display updates after merge', async ({ page }) => {
     await page.waitForTimeout(200);
     await expect(page.locator('#score')).toHaveText('16');
 });
+
+// ============================================
+// Test: Undo restores previous state
+// ============================================
+test('undo restores score and grid after a merge', async ({ page }) => {
+    await page.goto('/index.html');
+    await page.waitForTimeout(300);
+    // Set up a merge
+    await page.evaluate(() => {
+        initGrid();
+        clearAllTiles();
+        score = 0;
+        gameOver = false;
+        won = false;
+        moveCount = 0;
+        undoStack = [];
+        scoreEl.textContent = '0';
+        const id1 = nextTileId++;
+        const id2 = nextTileId++;
+        tileGrid[0][0] = { id: id1, value: 2 };
+        tileGrid[1][0] = { id: id2, value: 2 };
+        createTileEl(id1, 2, 0, 0, false);
+        createTileEl(id2, 2, 1, 0, false);
+    });
+    // Make a move (merge)
+    await page.keyboard.press('ArrowUp');
+    await page.waitForTimeout(200);
+    const scoreAfterMove = await page.evaluate(() => score);
+    expect(scoreAfterMove).toBe(4);
+
+    // Undo
+    await page.evaluate(() => undo());
+    await page.waitForTimeout(100);
+    const scoreAfterUndo = await page.evaluate(() => score);
+    expect(scoreAfterUndo).toBe(0);
+});
+
+// ============================================
+// Test: Undo button is disabled when no history
+// ============================================
+test('undo button is disabled at game start', async ({ page }) => {
+    await freshGame(page);
+    const disabled = await page.evaluate(() => document.getElementById('undo-btn').disabled);
+    expect(disabled).toBe(true);
+});
+
+// ============================================
+// Test: Undo button enabled after a move
+// ============================================
+test('undo button enabled after a move', async ({ page }) => {
+    await freshGame(page);
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(200);
+    const disabled = await page.evaluate(() => document.getElementById('undo-btn').disabled);
+    expect(disabled).toBe(false);
+});
+
+// ============================================
+// Test: Dark mode toggles
+// ============================================
+test('dark mode toggle adds dark class to body', async ({ page }) => {
+    await page.goto('/index.html');
+    await page.waitForTimeout(300);
+    // Clear dark mode state
+    await page.evaluate(() => { localStorage.removeItem('2048_dark'); document.body.classList.remove('dark'); });
+
+    const beforeDark = await page.evaluate(() => document.body.classList.contains('dark'));
+    expect(beforeDark).toBe(false);
+
+    await page.click('#dark-mode-btn');
+    await page.waitForTimeout(100);
+
+    const afterDark = await page.evaluate(() => document.body.classList.contains('dark'));
+    expect(afterDark).toBe(true);
+});
+
+// ============================================
+// Test: Dark mode persists in localStorage
+// ============================================
+test('dark mode persists in localStorage', async ({ page }) => {
+    await page.goto('/index.html');
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { localStorage.removeItem('2048_dark'); document.body.classList.remove('dark'); });
+
+    await page.click('#dark-mode-btn');
+    await page.waitForTimeout(100);
+
+    const stored = await page.evaluate(() => localStorage.getItem('2048_dark'));
+    expect(stored).toBe('true');
+});
+
+// ============================================
+// Test: Move count increments
+// ============================================
+test('move count increments on valid move', async ({ page }) => {
+    await freshGame(page);
+    const before = await page.evaluate(() => moveCount);
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(200);
+    const after = await page.evaluate(() => moveCount);
+    expect(after).toBe(before + 1);
+});
+
+// ============================================
+// Test: Version is 1.1.0
+// ============================================
+test('game version is 1.1.0', async ({ page }) => {
+    await page.goto('/index.html');
+    await page.waitForTimeout(300);
+    const version = await page.evaluate(() => GAME_VERSION);
+    expect(version).toBe('1.1.0');
+});

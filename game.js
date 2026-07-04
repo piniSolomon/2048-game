@@ -3,10 +3,11 @@
 // A browser-based clone of the classic 2048 game
 // ============================================
 
-const GAME_VERSION = '1.0.0';
+const GAME_VERSION = '1.1.0';
 const GRID_SIZE = 4;
 const STORAGE_KEY = '2048_best';
 const STATE_KEY = '2048_state';
+const DARK_KEY = '2048_dark';
 
 // --- DOM ---
 const boardEl = document.getElementById('game-board');
@@ -15,6 +16,8 @@ const gridBgEl = document.getElementById('grid-bg');
 const scoreEl = document.getElementById('score');
 const bestEl = document.getElementById('best');
 const newGameBtn = document.getElementById('new-game-btn');
+const undoBtn = document.getElementById('undo-btn');
+const darkModeBtn = document.getElementById('dark-mode-btn');
 const messageEl = document.getElementById('game-message');
 const messageText = document.getElementById('message-text');
 const messageBtn = document.getElementById('message-btn');
@@ -27,6 +30,90 @@ var gameOver = false;
 var won = false;
 var keepPlaying = false;
 var moving = false;   // animation lock
+var moveCount = 0;
+
+// Undo history (stores previous state before each move)
+var undoStack = [];
+const MAX_UNDO = 5;
+
+// Dark mode
+var darkMode = localStorage.getItem(DARK_KEY) === 'true';
+if (darkMode) document.body.classList.add('dark');
+
+// --- Audio (Web Audio API) ---
+var audioCtx = null;
+
+function initAudio() {
+    if (audioCtx) return;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) { /* no audio */ }
+}
+
+function playSlideSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.06);
+    gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.06);
+}
+
+function playMergeSound(value) {
+    if (!audioCtx) return;
+    // Higher pitch for higher merges
+    const baseFreq = 300 + Math.min(Math.log2(value) * 80, 800);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, audioCtx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+}
+
+function playGameOverSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+}
+
+function playWinSound() {
+    if (!audioCtx) return;
+    const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+    notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        const t = audioCtx.currentTime + i * 0.1;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.1, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.2);
+    });
+}
 
 bestEl.textContent = best;
 
@@ -170,6 +257,8 @@ function canMove() {
 function move(direction) {
     if (moving || gameOver) return false;
 
+    initAudio();
+
     // direction: 'up', 'down', 'left', 'right'
     const vectors = {
         up:    { dr: -1, dc: 0 },
@@ -190,6 +279,16 @@ function move(direction) {
     let moved = false;
     const mergedIds = new Set();
     const toRemove = []; // tile IDs to remove after animation
+
+    // Save undo state before move
+    const undoState = {
+        grid: tileGrid.map(row => row.map(cell => cell ? { value: cell.value } : null)),
+        score: score,
+        gameOver: gameOver,
+        won: won,
+        keepPlaying: keepPlaying,
+        moveCount: moveCount,
+    };
 
     for (const r of rows) {
         for (const c of cols) {
@@ -246,6 +345,7 @@ function move(direction) {
 
                     // Score popup
                     showScorePopup(nr, nc, newValue);
+                    playMergeSound(newValue);
 
                     // Check win
                     if (newValue === 2048 && !won && !keepPlaying) {
@@ -262,6 +362,13 @@ function move(direction) {
     }
 
     if (moved) {
+        // Push undo state
+        undoStack.push(undoState);
+        if (undoStack.length > MAX_UNDO) undoStack.shift();
+        updateUndoBtn();
+        moveCount++;
+        playSlideSound();
+
         moving = true;
         setTimeout(() => {
             // Remove absorbed tiles
@@ -273,14 +380,16 @@ function move(direction) {
 
             if (won) {
                 showMessage('You win!', true);
+                playWinSound();
                 if (typeof trackEvent === 'function') {
-                    trackEvent('game_win', { score, best });
+                    trackEvent('game_win', { score, best, moves: moveCount });
                 }
             } else if (!canMove()) {
                 gameOver = true;
                 showMessage('Game over!', false);
+                playGameOverSound();
                 if (typeof trackEvent === 'function') {
-                    trackEvent('game_over', { score, best });
+                    trackEvent('game_over', { score, best, moves: moveCount });
                 }
             }
 
@@ -292,8 +401,9 @@ function move(direction) {
         if (!canMove()) {
             gameOver = true;
             showMessage('Game over!', false);
+            playGameOverSound();
             if (typeof trackEvent === 'function') {
-                trackEvent('game_over', { score, best });
+                trackEvent('game_over', { score, best, moves: moveCount });
             }
             saveState();
         }
@@ -336,6 +446,9 @@ function newGame() {
     gameOver = false;
     won = false;
     keepPlaying = false;
+    moveCount = 0;
+    undoStack = [];
+    updateUndoBtn();
     scoreEl.textContent = '0';
     hideMessage();
 
@@ -347,6 +460,50 @@ function newGame() {
     if (typeof trackEvent === 'function') {
         trackEvent('game_start', { game: '2048' });
     }
+}
+
+// --- Undo ---
+function updateUndoBtn() {
+    if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+}
+
+function undo() {
+    if (undoStack.length === 0 || moving) return;
+
+    const prev = undoStack.pop();
+    updateUndoBtn();
+
+    initGrid();
+    clearAllTiles();
+
+    score = prev.score;
+    gameOver = prev.gameOver;
+    won = prev.won;
+    keepPlaying = prev.keepPlaying;
+    moveCount = prev.moveCount;
+
+    scoreEl.textContent = score;
+
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            const cell = prev.grid[r][c];
+            if (cell) {
+                const id = nextTileId++;
+                tileGrid[r][c] = { id, value: cell.value };
+                createTileEl(id, cell.value, r, c, false);
+            }
+        }
+    }
+
+    hideMessage();
+    saveState();
+}
+
+// --- Dark mode ---
+function toggleDarkMode() {
+    darkMode = !darkMode;
+    document.body.classList.toggle('dark', darkMode);
+    localStorage.setItem(DARK_KEY, String(darkMode));
 }
 
 // --- Save / Load state ---
@@ -409,6 +566,11 @@ window.addEventListener('keydown', (e) => {
         e.preventDefault();
         const dir = e.key.replace('Arrow', '').toLowerCase();
         move(dir);
+    }
+    // Ctrl+Z / Cmd+Z for undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
     }
 });
 
@@ -473,6 +635,8 @@ window.addEventListener('mouseup', (e) => {
 
 // Buttons
 newGameBtn.addEventListener('click', newGame);
+if (undoBtn) undoBtn.addEventListener('click', undo);
+if (darkModeBtn) darkModeBtn.addEventListener('click', toggleDarkMode);
 messageBtn.addEventListener('click', () => {
     if (won && !keepPlaying) {
         keepPlaying = true;

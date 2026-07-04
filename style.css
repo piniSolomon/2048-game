@@ -76,12 +76,17 @@ h1 {
     align-items: center;
 }
 
+.btn-group {
+    display: flex;
+    gap: 6px;
+}
+
 .tagline {
     font-size: 14px;
     color: #776e65;
 }
 
-#new-game-btn, #message-btn {
+#new-game-btn, #message-btn, #undo-btn, #dark-mode-btn {
     background: #8f7a66;
     color: #f9f6f2;
     border: none;
@@ -93,7 +98,17 @@ h1 {
     transition: background 0.15s;
 }
 
-#new-game-btn:hover, #message-btn:hover {
+#undo-btn, #dark-mode-btn {
+    padding: 10px 14px;
+    font-size: 18px;
+}
+
+#undo-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#new-game-btn:hover, #message-btn:hover, #undo-btn:hover:not(:disabled), #dark-mode-btn:hover {
     background: #9f8b77;
 }
 
@@ -242,4 +257,62 @@ footer {
     #tiles { inset: 8px; }
     .tagline { font-size: 12px; }
     footer { font-size: 11px; }
+    #undo-btn, #dark-mode-btn { padding: 8px 10px; font-size: 16px; }
+    #new-game-btn { padding: 8px 14px; font-size: 12px; }
 }
+
+/* Dark mode */
+body.dark {
+    background: #1a1a2e;
+}
+
+body.dark h1 {
+    color: #e0d6c8;
+}
+
+body.dark .tagline,
+body.dark footer {
+    color: #a09888;
+}
+
+body.dark .score-box {
+    background: #3d3a33;
+}
+
+body.dark #game-board {
+    background: #3d3a33;
+}
+
+body.dark .grid-cell {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark #game-message {
+    background: rgba(26, 26, 46, 0.8);
+}
+
+body.dark #message-text {
+    color: #e0d6c8;
+}
+
+body.dark .score-popup {
+    color: #e0d6c8;
+}
+
+body.dark #new-game-btn,
+body.dark #undo-btn,
+body.dark #dark-mode-btn,
+body.dark #message-btn {
+    background: #5c5245;
+}
+
+body.dark #new-game-btn:hover,
+body.dark #undo-btn:hover:not(:disabled),
+body.dark #dark-mode-btn:hover,
+body.dark #message-btn:hover {
+    background: #6d6255;
+}
+
+/* Dark mode tile overrides for low-value tiles */
+body.dark .tile-2  { background: #4a4538; color: #e0d6c8; }
+body.dark .tile-4  { background: #564f40; color: #e0d6c8; }
